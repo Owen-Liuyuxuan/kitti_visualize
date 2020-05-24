@@ -32,6 +32,7 @@ class KittiVisualizeNode:
         self.stop = True
         self.update_frequency = 4
         self.timer = rospy.Timer(rospy.Duration(1.0 / self.update_frequency), self.publish_callback)
+        rospy.Subscriber("/kitti/control/base_dir", String, self.base_dir_callback)
         rospy.Subscriber("/kitti/control/is_sequence", Bool, self.is_sequence_callback)
         rospy.Subscriber("/kitti/control/index", Int32, self.index_callback)
         rospy.Subscriber("/kitti/control/stop", Bool, self.stop_callback)
