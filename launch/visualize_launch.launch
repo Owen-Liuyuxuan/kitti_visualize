@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="kitti_visualize" type="kitti_visualize_node.py" name="kitti_visualize_node" output="screen">
+    </node>
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find kitti_visualize)/rviz/rviz.rviz"/>
+    <node pkg="kitti_visualize" type="gui_controller_node.py" name="GUI_controller_node" output="screen" respawn="false" respawn_delay="0">
+        
+    </node>
+</launch>
