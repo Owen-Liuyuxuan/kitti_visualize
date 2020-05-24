@@ -9,6 +9,7 @@ Panels:
         - /Camera1/Visibility1
         - /Camera2/Visibility1
         - /PointCloud21/Autocompute Value Bounds1
+        - /PointCloud22
       Splitter Ratio: 0.5
     Tree Height: 318
   - Class: rviz/Selection
@@ -120,7 +121,7 @@ Visualization Manager:
         Camera: true
         Grid: false
         MarkerArray: true
-        PointCloud2: true
+        PointCloud2: false
         TF: false
         Value: true
       Zoom Factor: 1
@@ -135,8 +136,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 79.71900177001953
-        Min Value: 0.38100001215934753
+        Max Value: 79.91000366210938
+        Min Value: 0.7929999828338623
         Value: true
       Axis: X
       Channel Name: intensity
@@ -172,7 +173,7 @@ Visualization Manager:
       Channel Name: intensity
       Class: rviz/PointCloud2
       Color: 186; 189; 182
-      Color Transformer: FlatColor
+      Color Transformer: RGBF32
       Decay Time: 0
       Enabled: true
       Invert Rainbow: false
@@ -185,9 +186,9 @@ Visualization Manager:
       Queue Size: 1
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.029999999329447746
+      Size (m): 0.05000000074505806
       Style: Spheres
-      Topic: /kitti/stereo_matching
+      Topic: /kitti/depth_image
       Unreliable: false
       Use Fixed Frame: false
       Use rainbow: true
@@ -220,25 +221,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 47.6038818359375
+      Distance: 35.81039047241211
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 26.882665634155273
-        Y: -2.7227466106414795
-        Z: 0.39062434434890747
+        X: 26.851425170898438
+        Y: 1.8196324110031128
+        Z: 0.8540657758712769
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.20479878783226013
+      Pitch: 0.044798873364925385
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.110596179962158
+      Yaw: 3.1856017112731934
     Saved: ~
 Window Geometry:
   Camera:

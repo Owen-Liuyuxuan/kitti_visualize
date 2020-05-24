@@ -6,9 +6,6 @@ class Ui_Dialog(object):
         self.ros_interface = ros_interface
         self.reset()
 
-    def accept(self):
-        self.base_dir_edited()
-
     def reject(self):
         self.quit = True
         self.Dialog.reject()
@@ -17,24 +14,9 @@ class Ui_Dialog(object):
         self.quit = False
         self.text_set = False
 
-    def base_dir_edited(self):
-        line = self.lineEdit.text()
-        if os.path.isdir(line):
-            self.ros_interface.publish_directory(line)
-            self.text_set = True
-            if not self.checkBox.isChecked() and not self.checkBox_2.isChecked():
-                max_file = len(os.listdir(os.path.join(line, "image_2")))
-                self.progressBar.setMaximum(max_file)
-            else:
-                childs = os.listdir(line)
-                childs = [child for child in childs if not child.endswith("txt")]
-                self.progressBar.setMaximum(len(childs))
-
 
     def img_index_changed(self):
         value = self.imageIndex.value()
-        if self.text_set:
-            self.progressBar.setProperty("value", value)
         self.ros_interface.publish_index(value)
 
     def is_sequence_changed(self):
@@ -64,26 +46,10 @@ class Ui_Dialog(object):
         self.imageIndex.setMaximum(1000000)
         self.imageIndex.setObjectName("imageIndex")
         self.imageIndex.valueChanged.connect(self.img_index_changed)
-        self.lineEdit = QtWidgets.QLineEdit(Dialog)
-        self.lineEdit.setGeometry(QtCore.QRect(60, 110, 311, 21))
-        self.lineEdit.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.lineEdit.setObjectName("lineEdit")
-        self.lineEdit.setText("/home/hins/Desktop/M3D-RPN/data/kitti/training")
-        # self.lineEdit.editingFinished.connect(self.base_dir_edited)
-
-        self.progressBar = QtWidgets.QProgressBar(Dialog)
-        self.progressBar.setGeometry(QtCore.QRect(30, 10, 361, 21))
-        self.progressBar.setProperty("value", 0)
-        self.progressBar.setFormat("%v/%m")
-        self.progressBar.setObjectName("progressBar")
-
 
         self.label = QtWidgets.QLabel(Dialog)
         self.label.setGeometry(QtCore.QRect(40, 50, 51, 21))
         self.label.setObjectName("label")
-        self.label_2 = QtWidgets.QLabel(Dialog)
-        self.label_2.setGeometry(QtCore.QRect(0, 110, 67, 17))
-        self.label_2.setObjectName("label_2")
         self.checkBox = QtWidgets.QCheckBox(Dialog)
         self.checkBox.setGeometry(QtCore.QRect(200, 40, 161, 41))
         self.checkBox.setObjectName("checkBox")
@@ -102,16 +68,13 @@ class Ui_Dialog(object):
         self.checkBox_3.toggled.connect(self.pause_changed)
 
         self.retranslateUi(Dialog)
-        self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
         QtCore.QMetaObject.connectSlotsByName(Dialog)
 
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
-        self.progressBar.setFormat(_translate("Dialog", "%v/%m"))
         self.label.setText(_translate("Dialog", "index"))
-        self.label_2.setText(_translate("Dialog", "base_dir"))
         self.checkBox.setText(_translate("Dialog", "IsSequential"))
         self.checkBox_2.setText(_translate("Dialog", "Stop"))
         self.checkBox_3.setText(_translate("Dialog", "Pause(for sequence)"))

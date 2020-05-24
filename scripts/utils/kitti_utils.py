@@ -6,6 +6,19 @@ from visualization_msgs.msg import Marker
 from constants import KITTI_COLORS, KITTI_NAMES
 
 def read_labels(file):
+    """Read objects 3D bounding boxes from a label file.
+
+    Args:
+        file: string of path to the label file
+
+    Returns:
+        objects: List[Dict];
+        object['whl'] = [w, h, l]
+        object['xyz'] = [x, y, z] # center point location in center camera coordinate
+        object['theta']: float
+        object['score']: float
+        object['type_name']: string
+    """
     objects = []
     with open(file, 'r') as f:
         for line in f.readlines():
@@ -99,11 +112,30 @@ def read_P23_from_sequence(file):
     assert P3 is not None, "can not find P3 in file {}".format(file)
     return P2, P3
 
-def get_files(base_dir, index, is_sequence):
+def determine_date_index(base_dir, index):
+    date_times = os.listdir(base_dir)
+    residual_index = index
+    date_times.sort()
+    for date_time in date_times:
+        date_dir = os.path.join(base_dir, date_time)
+        sequences_at_date = [file for file in os.listdir(date_dir) if not file.endswith("txt")]
+        sequences_at_date.sort()
+        if residual_index >= len(sequences_at_date):
+            residual_index = residual_index - len(sequences_at_date)
+        else:
+            break
+    else:
+        rospy.logwarn("index {} is larger than the total number of sequences {} in {}".format(index, index-residual_index, base_dir))
+        return None, None, None
+    
+    return date_dir, sequences_at_date[residual_index]
+
+def get_files(base_dir, index, is_sequence, depth_dir=None):
     """Retrieve a dictionary of filenames, including calibration(P2, P3, R, T), left_image, right_image, point_cloud, labels(could be none)
+
         if is_sequence:
             Will read from KITTI raw data. 
-            base_dir: str, should be absolute file path to datetime <2011_09_26>
+            base_dir: str, should be absolute file path to kitti_raw
             index: int, sequence number at that datetime <1> -> <2011_09_26_drive_0001_sync>
         else:
             Will read from KITTI detection data.
@@ -112,9 +144,9 @@ def get_files(base_dir, index, is_sequence):
     """
     output_dict = {
         "calib":{
-            "P2":np.zeros([3, 4]),
-            "P3":np.zeros([3, 4]),
-            "T_velo2cam":np.zeros([3, 4]),
+            "P2":None,
+            "P3":None,
+            "T_velo2cam":None,
         },
         "left_image":"",
         "right_image":"",
@@ -122,33 +154,46 @@ def get_files(base_dir, index, is_sequence):
         "label":None
     }
     if is_sequence:
-        cam_calib_file = os.path.join(base_dir, "calib_cam_to_cam.txt")
+        
+        date_dir, sequence = determine_date_index(base_dir, index)
+        cam_calib_file = os.path.join(date_dir, "calib_cam_to_cam.txt")
         P2, P3 = read_P23_from_sequence(cam_calib_file)
-        velo_calib_file = os.path.join(base_dir, "calib_velo_to_cam.txt")
+        velo_calib_file = os.path.join(date_dir, "calib_velo_to_cam.txt")
         T_velo2cam = read_T_from_sequence(velo_calib_file)
         output_dict["calib"]["P2"] = P2
         output_dict["calib"]["P3"] = P3
         output_dict["calib"]["T_velo2cam"] = T_velo2cam
 
-        sequences = os.listdir(base_dir)
-        sequences.sort()
-        sequences = [sequence for sequence in sequences if not sequence.endswith("txt")]
-            
-        sequence = sequences[index%len(sequences)]
-        left_dir = os.path.join(base_dir, sequence, "image_02", "data")
+        left_dir = os.path.join(date_dir, sequence, "image_02", "data")
         left_images = os.listdir(left_dir)
         left_images.sort()
         left_images = [os.path.join(left_dir, left_image) for left_image in left_images]
 
-        right_dir = os.path.join(base_dir, sequence, "image_03", "data")
+        right_dir = os.path.join(date_dir, sequence, "image_03", "data")
         right_images= os.listdir(right_dir)
         right_images.sort()
         right_images = [os.path.join(right_dir, right_image) for right_image in right_images]
 
-        velo_dir = os.path.join(base_dir, sequence, "velodyne_points", "data")
+        velo_dir = os.path.join(date_dir, sequence, "velodyne_points", "data")
         velodynes = os.listdir(velo_dir)
         velodynes.sort()
         velodynes = [os.path.join(velo_dir, velodyne) for velodyne in velodynes]
+
+        if not depth_dir is None:
+            if sequence in os.listdir(os.path.join(depth_dir, "train")):
+                depth_image_dir = os.path.join(depth_dir, "train", sequence, 'proj_depth', 'groundtruth', 'image_02')
+                depth_images = os.listdir(depth_image_dir)
+                depth_images.sort()
+                depth_images = [os.path.join(depth_image_dir, depth_image) for depth_image in depth_images]
+                output_dict["depth_images"] = depth_images
+            if sequence in os.listdir(os.path.join(depth_dir, "val")):
+                depth_image_dir = os.path.join(depth_dir, "val", sequence, 'proj_depth', 'groundtruth', 'image_02')
+                depth_images = os.listdir(depth_image_dir)
+                depth_images.sort()
+                depth_images = [os.path.join(depth_image_dir, depth_image) for depth_image in depth_images]
+                output_dict["depth_images"] = depth_images
+                rospy.loginfo("the current sequence {} is in validation set".format(sequence))
+
         output_dict["left_image"] = left_images
         output_dict["right_image"] = right_images
         output_dict["point_cloud"] = velodynes

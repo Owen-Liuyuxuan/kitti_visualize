@@ -1,4 +1,20 @@
 #!/usr/bin/env python
+"""
+    This script launchs a control panel for GUI interaction with KITTI visualization.
+    Currently support object dataset, sequential dataset and depth prediction dataset
+
+    User manual:
+
+    index: integer selection notice do not overflow the index number (especially for kitti object dataset)
+
+    isSequential: boolean flag to determine if we are using streaming data (for raw dataset)
+
+    Stop: stop any data loading or processing of the visualization node.
+    
+    Pause: prevent pointer of the sequantial data stream from increasing, keep the current scene.
+
+    Cancel: quit.
+"""
 import rospy 
 import sys
 from PyQt5 import QtWidgets
@@ -9,16 +25,12 @@ class RosInterface(object):
     def __init__(self):
         super(RosInterface, self).__init__()
         self.index_pub = rospy.Publisher("/kitti/control/index", Int32, queue_size=1)
-        self.base_dir_pub = rospy.Publisher("/kitti/control/base_dir", String, queue_size=1)
         self.in_sequence_pub = rospy.Publisher("/kitti/control/is_sequence", Bool, queue_size=1)
         self.pause_pub = rospy.Publisher("/kitti/control/pause", Bool, queue_size=1)
         self.stop_pub = rospy.Publisher("/kitti/control/stop", Bool, queue_size=1)
 
     def publish_index(self, index):
         self.index_pub.publish(Int32(index))
-
-    def publish_directory(self, directory):
-        self.base_dir_pub.publish(String(directory))
 
     def publish_is_squence_bool(self, is_sequence):
         self.in_sequence_pub.publish(Bool(is_sequence))

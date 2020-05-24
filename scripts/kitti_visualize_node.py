@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from fire import Fire
 import numpy as np
 import rospy 
 import cv2
@@ -9,20 +8,23 @@ from visualization_msgs.msg import Marker, MarkerArray
 from std_msgs.msg import String, Int32, Bool, Float32
 
 class KittiVisualizeNode:
-    def __init__(self, KITTI_obj_dir, KITTI_raw_dir):
+    """ Main node for data visualization. Core logic lies in publish_callback.
+    """
+    def __init__(self):
         rospy.init_node("KittiVisualizeNode")
         rospy.loginfo("Starting KittiVisualizeNode.")
-
 
         self.left_image_publish  = rospy.Publisher("/kitti/left_camera/image", Image, queue_size=1, latch=True)
         self.right_image_publish = rospy.Publisher("/kitti/right_camera/image", Image, queue_size=1, latch=True)
         self.left_camera_info    = rospy.Publisher("/kitti/left_camera/camera_info", CameraInfo, queue_size=1, latch=True)
         self.right_camera_info   = rospy.Publisher("/kitti/right_camera/camera_info", CameraInfo, queue_size=1, latch=True)
         self.bbox_publish        = rospy.Publisher("/kitti/bboxes", MarkerArray, queue_size=1, latch=True)
-        
         self.lidar_publisher     = rospy.Publisher("/kitti/lidar", PointCloud2, queue_size=1, latch=True)
-        
-
+        KITTI_obj_dir = rospy.get_param("~KITTI_OBJ_DIR", None)
+        KITTI_raw_dir = rospy.get_param("~KITTI_RAW_DIR", None)
+        self.KITTI_depth_dir = rospy.get_param("~KITTI_DEPTH_DIR", None)
+        if self.KITTI_depth_dir:
+            self.depth_publisher = rospy.Publisher("/kitti/depth_image", PointCloud2, queue_size=1, latch=True)
         self.kitti_base_dir = [KITTI_obj_dir, KITTI_raw_dir]
         self.is_sequence = False
         self.index = 0
@@ -30,23 +32,18 @@ class KittiVisualizeNode:
         self.sequence_index = 0
         self.pause = False
         self.stop = True
-        self.update_frequency = 4
+        self.update_frequency = 8
         self.timer = rospy.Timer(rospy.Duration(1.0 / self.update_frequency), self.publish_callback)
-        rospy.Subscriber("/kitti/control/base_dir", String, self.base_dir_callback)
         rospy.Subscriber("/kitti/control/is_sequence", Bool, self.is_sequence_callback)
         rospy.Subscriber("/kitti/control/index", Int32, self.index_callback)
         rospy.Subscriber("/kitti/control/stop", Bool, self.stop_callback)
         rospy.Subscriber("/kitti/control/pause", Bool, self.pause_callback)
 
-    def base_dir_callback(self, msg):
-        self.kitti_base_dir = msg.data
-        self.sequence_index += 1
-        self.published=False
-        self.publish_callback(None)
 
     def is_sequence_callback(self, msg):
         self.published=False
         self.is_sequence = msg.data
+        rospy.loginfo("Switching to folder {}".format(self.kitti_base_dir[int(self.is_sequence)]))
 
     def stop_callback(self, msg):
         self.published=False
@@ -62,10 +59,19 @@ class KittiVisualizeNode:
         self.publish_callback(None)
         
     def publish_callback(self, event):
-        if self.stop:
+        if self.stop: # if stopped, falls back to an empty loop
+            return
+
+        selected_folder = self.kitti_base_dir[int(self.is_sequence)]
+        if selected_folder is None:
+            rospy.logwarn("The selected_folder is None. Folders from launch_file:{}".format(self.kitti_base_dir))
             return
         
-        meta_dict = kitti_utils.get_files(self.kitti_base_dir, self.index, self.is_sequence)
+        meta_dict = kitti_utils.get_files(selected_folder, self.index, self.is_sequence, self.KITTI_depth_dir)
+        if meta_dict is None:
+            rospy.logwarn("meta_dict from kitti_utils.get_files is None, current_arguments {}"\
+                .format([selected_folder, self.index, self.is_sequence, self.KITTI_depth_dir]))
+            return
         P2 = meta_dict["calib"]["P2"]
         P3 = meta_dict["calib"]["P3"]
         T = meta_dict["calib"]["T_velo2cam"]
@@ -78,7 +84,7 @@ class KittiVisualizeNode:
                 self.bbox_publish.publish([ros_util.object_to_marker(obj, marker_id=i, duration=1.01 / self.update_frequency) for i, obj in enumerate(objects)])
         
 
-            if event is not None: # call by timer
+            if event is not None: # if call by timer, only the labels will get refreshed and images/point clouds are freezed
                 return
             left_image = cv2.imread(meta_dict["left_image"])
             if left_image is None:
@@ -94,6 +100,8 @@ class KittiVisualizeNode:
 
             
         else:
+            if self.pause: # if paused, all data will freeze
+                return
 
             length = min([len(meta_dict["left_image"]), len(meta_dict["right_image"]), len(meta_dict["point_cloud"])])
 
@@ -111,13 +119,19 @@ class KittiVisualizeNode:
             point_cloud = point_cloud[point_cloud[:, 0] > np.abs(point_cloud[:, 1]) * 0.2 ]
             ros_util.publish_point_cloud(point_cloud, self.lidar_publisher, "velodyne")
 
-            if not self.pause:
-                self.sequence_index += 1
+            if "depth_images" in meta_dict and meta_dict["depth_images"] is not None:
+                image_name = meta_dict["left_image"][self.sequence_index].split("/")[-1]
+                for depth_image_path in meta_dict["depth_images"]:
+                    if image_name in depth_image_path:
+                        depth_image = cv2.imread(depth_image_path, -1)#[H, W] uint16 /256.0=depth
+                        depth_point_cloud = ros_util.depth_image_to_point_cloud_array(depth_image, P2[0:3, 0:3], rgb_image=left_image)
+                        ros_util.publish_point_cloud(depth_point_cloud, self.depth_publisher, "left_camera", 'xyzbgr')
 
-def main(KITTI_obj_dir=None,
-         KITTI_raw_dir=None):
-    node = KittiVisualizeNode(KITTI_obj_dir, KITTI_raw_dir)
+            self.sequence_index += 1
+
+def main():
+    node = KittiVisualizeNode()
     rospy.spin()
 
 if __name__ == "__main__":
-    Fire(main)
+    main()

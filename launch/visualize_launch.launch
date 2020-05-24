@@ -1,9 +1,16 @@
 <?xml version="1.0"?>
 <launch>
+    <arg name="KITTI_OBJ_DIR" default="/home/hins/Desktop/M3D-RPN/data/kitti/training"/>
+    <arg name="KITTI_RAW_DIR" default="/data/kitti_raw"/>
+    <!--  do not provide KITTI_DEPTH_DIR to the node to disable -->
+    <arg name="KITTI_DEPTH_DIR" default="/data/data_depth_annotated"/> 
     <node pkg="kitti_visualize" type="kitti_visualize_node.py" name="kitti_visualize_node" output="screen">
+        <param name="KITTI_OBJ_DIR" value="$(arg KITTI_OBJ_DIR)"/>
+        <param name="KITTI_RAW_DIR" value="$(arg KITTI_RAW_DIR)"/>
+        <param name="KITTI_DEPTH_DIR" value="$(arg KITTI_DEPTH_DIR)"/>
     </node>
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find kitti_visualize)/rviz/rviz.rviz"/>
     <node pkg="kitti_visualize" type="gui_controller_node.py" name="GUI_controller_node" output="screen" respawn="false" respawn_delay="0">
-        
+
     </node>
 </launch>

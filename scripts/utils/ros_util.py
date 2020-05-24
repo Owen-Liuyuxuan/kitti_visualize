@@ -11,8 +11,49 @@ import std_msgs.msg as std_msgs
 import sensor_msgs.msg as sensor_msgs
 from .constants import KITTI_NAMES, KITTI_COLORS
 
+def depth_image_to_point_cloud_array(depth_image, K, parent_frame="left_camera", rgb_image=None):
+    """  convert depth image into color pointclouds [xyzbgr]
+    
+    """
+    depth_image = np.copy(depth_image) / 256.0
+    w_range = np.arange(0, depth_image.shape[1], dtype=np.float32)
+    h_range = np.arange(0, depth_image.shape[0], dtype=np.float32)
+    w_grid, h_grid = np.meshgrid(w_range, h_range) #[H, W]
+    K_expand = np.eye(4)
+    K_expand[0:3, 0:3] = K
+    K_inv = np.linalg.inv(K_expand) #[4, 4]
+
+    #[H, W, 4, 1]
+    expand_image = np.stack([w_grid * depth_image, h_grid * depth_image, depth_image, np.ones_like(depth_image)], axis=2)[...,np.newaxis]
+
+    pc_3d = np.matmul(K_inv, expand_image)[..., 0:3, 0] #[H, W, 3]
+    if rgb_image is not None:
+        pc_3d = np.concatenate([pc_3d, rgb_image/256.0], axis=2).astype(np.float32)
+    point_cloud = pc_3d[depth_image > 0,:]
+    
+    return point_cloud
+
 
 def object_to_marker(obj, frame_id="base", marker_id=None, duration=0.15):
+    """ Transform an object to a marker.
+
+    Args:
+        obj: Dict
+        frame_id: string; parent frame name
+        marker_id: visualization_msgs.msg.Marker.id
+        duration: the existence time in rviz
+    
+    Return:
+        marker: visualization_msgs.msg.Marker
+
+    object dictionary expectation:
+        object['whl'] = [w, h, l]
+        object['xyz'] = [x, y, z] # center point location in center camera coordinate
+        object['theta']: float
+        object['score']: float
+        object['type_name']: string # should have name in constant.KITTI_NAMES
+
+    """
     marker = Marker()
     marker.header.stamp = rospy.Time.now()
     marker.header.frame_id = frame_id
@@ -42,51 +83,62 @@ def object_to_marker(obj, frame_id="base", marker_id=None, duration=0.15):
     marker.lifetime = rospy.Duration.from_sec(duration)
     return marker
 
-def publish_tf(P2, P3, T):
+def publish_tf(P2=None, P3=None, T=None):
     """ Publish camera, velodyne transform from P2, P3, T
     """
     br = tf.TransformBroadcaster()
 
     ## broadcast translation and rotation in velodyne T
-    homo_R = np.eye(4)
-    homo_R[0:3, 0:3] = T[0:3, 0:3]
-    br.sendTransform(
-        (T[0, 3], T[1, 3], T[2, 3]),
-        tf.transformations.quaternion_from_matrix(homo_R),
-        rospy.Time.now(),
-        "velodyne",
-        "base"
-    )
+    if T is not None:
+        homo_R = np.eye(4)
+        homo_R[0:3, 0:3] = T[0:3, 0:3]
+        br.sendTransform(
+            (T[0, 3], T[1, 3], T[2, 3]),
+            tf.transformations.quaternion_from_matrix(homo_R),
+            rospy.Time.now(),
+            "velodyne",
+            "base"
+        )
 
     ## broadcast the translation from world to base
 
     br.sendTransform(
         (0, 0, 0),
-        tf.transformations.quaternion_from_matrix(homo_R.T),
+        # tf.transformations.quaternion_from_matrix(homo_R.T),
+        [0.5, -0.5, 0.5, -0.5],
         rospy.Time.now(),
         "base",
         "world"
     )
-
+    if P2 is not None:
     ## broadcast the translation in P2
-    br.sendTransform(
-        (-P2[0, 3] / P2[0, 0], 0, 0),
-        tf.transformations.quaternion_from_euler(0, 0, 0),
-        rospy.Time.now(),
-        "left_camera",
-        "base"
-    )
-
-    ## broadcast translation in P3
-    br.sendTransform(
-        (-P3[0, 3] / P3[0, 0], 0, 0),
-        tf.transformations.quaternion_from_euler(0, 0, 0),
-        rospy.Time.now(),
-        "right_camera",
-        "base"
-    )
+        br.sendTransform(
+            (-P2[0, 3] / P2[0, 0], 0, 0),
+            tf.transformations.quaternion_from_euler(0, 0, 0),
+            rospy.Time.now(),
+            "left_camera",
+            "base"
+        )
+    if P3 is not None:
+        ## broadcast translation in P3
+        br.sendTransform(
+            (-P3[0, 3] / P3[0, 0], 0, 0),
+            tf.transformations.quaternion_from_euler(0, 0, 0),
+            rospy.Time.now(),
+            "right_camera",
+            "base"
+        )
 
 def publish_image(image, image_publisher, camera_info_publisher, P, frame_id):
+    """Publish image and info message to ROS.
+
+    Args:
+        image: numpy.ndArray.
+        image_publisher: rospy.Publisher
+        camera_info_publisher: rospy.Publisher, should publish CameraInfo
+        P: projection matrix [3, 4]. though only [3, 3] is useful.
+        frame_id: string, parent frame name.
+    """
     bridge = CvBridge()
     image_msg = bridge.cv2_to_imgmsg(image, encoding="passthrough")
     image_msg.header.frame_id = frame_id
@@ -106,11 +158,12 @@ def publish_image(image, image_publisher, camera_info_publisher, P, frame_id):
 
     camera_info_publisher.publish(camera_info_msg)
 
-def array2pc2(points, parent_frame):
+def array2pc2(points, parent_frame, field_names='xyza'):
     """ Creates a point cloud message.
     Args:
-        points: Nx7 array of xyz positions (m) and rgba colors (0..1)
+        points: Nxk array of xyz positions (m) and rgba colors (0..1)
         parent_frame: frame in which the point cloud is defined
+        field_names : name for the k channels repectively i.e. "xyz" / "xyza"
     Returns:
         sensor_msgs/PointCloud2 message
     """
@@ -122,7 +175,7 @@ def array2pc2(points, parent_frame):
 
     fields = [sensor_msgs.PointField(
         name=n, offset=i*itemsize, datatype=ros_dtype, count=1)
-        for i, n in enumerate('xyza')]
+        for i, n in enumerate(field_names)]
 
     header = std_msgs.Header(frame_id=parent_frame, stamp=rospy.Time.now())
 
@@ -133,11 +186,19 @@ def array2pc2(points, parent_frame):
         is_dense=False,
         is_bigendian=False,
         fields=fields,
-        point_step=(itemsize * 4),
-        row_step=(itemsize * 4 * points.shape[0]),
+        point_step=(itemsize * len(field_names)),
+        row_step=(itemsize * len(field_names) * points.shape[0]),
         data=data
     )
 
-def publish_point_cloud(pointcloud, pc_publisher, frame_id):
-    msg = array2pc2(pointcloud, frame_id)
+def publish_point_cloud(pointcloud, pc_publisher, frame_id, field_names='xyza'):
+    """Convert point cloud array to PointCloud2 message and publish
+    
+    Args:
+        pointcloud: point cloud array [N,3]/[N,4]
+        pc_publisher: ROS publisher for PointCloud2
+        frame_id: parent_frame name.
+        field_names: name for each channel, ['xyz', 'xyza'...]
+    """
+    msg = array2pc2(pointcloud, frame_id, field_names)
     pc_publisher.publish(msg)
