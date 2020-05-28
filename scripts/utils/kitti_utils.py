@@ -5,6 +5,25 @@ import rospy
 from visualization_msgs.msg import Marker
 from constants import KITTI_COLORS, KITTI_NAMES
 
+def color_pointcloud(pts, image, T, P2):
+    hfiller = np.expand_dims(np.ones(pts.shape[0]), axis=1)
+    pts_hT = np.hstack((pts, hfiller)).T #(4, #pts)
+    pts_cam_T = T.dot(pts_hT) # (4, #pts)
+
+    pixels_T = P2.dot(pts_cam_T) #(3, #pts)
+    pixels = pixels_T.T
+    pixels[:, 0] /= pixels[:, 2] + 1e-6
+    pixels[:, 1] /= pixels[:, 2] + 1e-6
+    w_coordinate = pixels[:, 0].astype(np.int32)
+    h_coordinate = pixels[:, 1].astype(np.int32)
+    w_coordinate[w_coordinate <= 0] = 0
+    w_coordinate[w_coordinate >= image.shape[1]] = image.shape[1] - 1
+    h_coordinate[h_coordinate <= 0] = 0
+    h_coordinate[h_coordinate >= image.shape[0]] = image.shape[0] - 1
+    
+    bgr = image[h_coordinate, w_coordinate, :]/ 256.0
+    return np.concatenate([pts, bgr], axis=1).astype(np.float32)
+
 def read_labels(file):
     """Read objects 3D bounding boxes from a label file.
 
@@ -151,7 +170,8 @@ def get_files(base_dir, index, is_sequence, depth_dir=None):
         "left_image":"",
         "right_image":"",
         "point_cloud":"",
-        "label":None
+        "label":None,
+        "additional_label":None
     }
     if is_sequence:
         
@@ -205,6 +225,7 @@ def get_files(base_dir, index, is_sequence, depth_dir=None):
         point_cloud = os.path.join(base_dir, "velodyne", kitti_ind + ".bin")
         calib_file = os.path.join(base_dir, "calib", kitti_ind + ".txt")
         label_file = os.path.join(base_dir, "label_2", kitti_ind + ".txt")
+        additional_label_file = os.path.join(base_dir, "additional_label_2", kitti_ind + ".txt")
         P2, P3, T_velo2cam = read_calib_from_detection(calib_file)
 
         output_dict["left_image"] = left_image
@@ -216,6 +237,9 @@ def get_files(base_dir, index, is_sequence, depth_dir=None):
 
         if os.path.isfile(label_file):
             output_dict["label"] = label_file
+        
+        if os.path.isfile(additional_label_file):
+            output_dict["additional_label"] = additional_label_file
 
     return output_dict
 

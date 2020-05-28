@@ -20,9 +20,12 @@ class KittiVisualizeNode:
         self.right_camera_info   = rospy.Publisher("/kitti/right_camera/camera_info", CameraInfo, queue_size=1, latch=True)
         self.bbox_publish        = rospy.Publisher("/kitti/bboxes", MarkerArray, queue_size=1, latch=True)
         self.lidar_publisher     = rospy.Publisher("/kitti/lidar", PointCloud2, queue_size=1, latch=True)
+        self.image_pc_publisher  = rospy.Publisher("/kitti/left_camera_pc", PointCloud2, queue_size=1, latch=True)
+        
         KITTI_obj_dir = rospy.get_param("~KITTI_OBJ_DIR", None)
         KITTI_raw_dir = rospy.get_param("~KITTI_RAW_DIR", None)
         self.KITTI_depth_dir = rospy.get_param("~KITTI_DEPTH_DIR", None)
+        self.image_pc_depth  = float(rospy.get_param("~Image_PointCloud_Depth", 5))
         if self.KITTI_depth_dir:
             self.depth_publisher = rospy.Publisher("/kitti/depth_image", PointCloud2, queue_size=1, latch=True)
         self.kitti_base_dir = [KITTI_obj_dir, KITTI_raw_dir]
@@ -48,6 +51,8 @@ class KittiVisualizeNode:
     def stop_callback(self, msg):
         self.published=False
         self.stop = msg.data
+        self.sequence_index = 0
+        ros_util.clear_all_bbox(self.bbox_publish)
         self.publish_callback(None)
 
     def pause_callback(self, msg):
@@ -81,8 +86,11 @@ class KittiVisualizeNode:
 
             if meta_dict["label"]:
                 objects = kitti_utils.read_labels(meta_dict["label"])
-                self.bbox_publish.publish([ros_util.object_to_marker(obj, marker_id=i, duration=1.01 / self.update_frequency) for i, obj in enumerate(objects)])
-        
+                self.bbox_publish.publish([ros_util.object_to_marker(obj, marker_id=i, duration=1.01 / self.update_frequency, color=(255, 0, 200)) for i, obj in enumerate(objects)])
+
+            if meta_dict["additional_label"]:
+                objects_add = kitti_utils.read_labels(meta_dict["additional_label"])
+                self.bbox_publish.publish([ros_util.object_to_marker(obj, marker_id=i+len(objects), duration=1.01 / self.update_frequency) for i, obj in enumerate(objects_add)])
 
             if event is not None: # if call by timer, only the labels will get refreshed and images/point clouds are freezed
                 return
@@ -97,6 +105,11 @@ class KittiVisualizeNode:
             point_cloud = np.fromfile(meta_dict["point_cloud"], dtype=np.float32).reshape(-1, 4)
             point_cloud = point_cloud[point_cloud[:, 0] > np.abs(point_cloud[:, 1]) * 0.2 ]
             ros_util.publish_point_cloud(point_cloud, self.lidar_publisher, "velodyne")
+
+            depth_image = np.zeros([left_image.shape[0], left_image.shape[1]])
+            depth_image[:, :] = self.image_pc_depth * 256
+            depth_point_cloud = ros_util.depth_image_to_point_cloud_array(depth_image, P2[0:3, 0:3], rgb_image=left_image)
+            ros_util.publish_point_cloud(depth_point_cloud, self.image_pc_publisher, "left_camera", 'xyzbgr')
 
             
         else:
@@ -118,6 +131,11 @@ class KittiVisualizeNode:
             point_cloud = np.fromfile(meta_dict["point_cloud"][self.sequence_index], dtype=np.float32).reshape(-1, 4)
             point_cloud = point_cloud[point_cloud[:, 0] > np.abs(point_cloud[:, 1]) * 0.2 ]
             ros_util.publish_point_cloud(point_cloud, self.lidar_publisher, "velodyne")
+
+            depth_image = np.zeros([left_image.shape[0], left_image.shape[1]])
+            depth_image[:, :] = self.image_pc_depth * 256
+            depth_point_cloud = ros_util.depth_image_to_point_cloud_array(depth_image, P2[0:3, 0:3], rgb_image=left_image)
+            ros_util.publish_point_cloud(depth_point_cloud, self.image_pc_publisher, "left_camera", 'xyzbgr')
 
             if "depth_images" in meta_dict and meta_dict["depth_images"] is not None:
                 image_name = meta_dict["left_image"][self.sequence_index].split("/")[-1]

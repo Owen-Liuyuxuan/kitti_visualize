@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 import rospy 
 import numpy as np
+from math import sin, cos
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2
+from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker, MarkerArray
 from std_msgs.msg import String, Int32, Bool
 import tf
@@ -33,8 +35,56 @@ def depth_image_to_point_cloud_array(depth_image, K, parent_frame="left_camera",
     
     return point_cloud
 
+def line_points_from_3d_bbox(x, y, z, w, h, l, theta):
+    corner_matrix = np.array(
+        [[-1, -1, -1],
+        [ 1, -1, -1],
+        [ 1,  1, -1],
+        [ 1,  1,  1],
+        [ 1, -1,  1],
+        [-1, -1,  1],
+        [-1,  1,  1],
+        [-1,  1, -1]], dtype=np.float32
+    )
+    relative_eight_corners = 0.5 * corner_matrix * np.array([w, h, l]) #[8, 3]
 
-def object_to_marker(obj, frame_id="base", marker_id=None, duration=0.15):
+    _cos = cos(theta)
+    _sin = sin(theta)
+
+    rotated_corners_x, rotated_corners_z = (
+            relative_eight_corners[:, 2] * _cos +
+                relative_eight_corners[:, 0] * _sin,
+        -relative_eight_corners[:, 2] * _sin +
+            relative_eight_corners[:, 0] * _cos
+        ) #[8]
+    rotated_corners = np.stack([rotated_corners_x, relative_eight_corners[:,1], rotated_corners_z], axis=-1) #[8, 3]
+    abs_corners = rotated_corners + np.array([x, y, z])  # [8, 3]
+
+    points = []
+    for i in range(1, 5):
+        points += [
+            Point(x=abs_corners[i, 0], y=abs_corners[i, 1], z=abs_corners[i, 2]),
+            Point(x=abs_corners[i%4+1, 0], y=abs_corners[i%4+1, 1], z=abs_corners[i%4+1, 2])
+        ]
+        points += [
+            Point(x=abs_corners[(i + 4)%8, 0], y=abs_corners[(i + 4)%8, 1], z=abs_corners[(i + 4)%8, 2]),
+            Point(x=abs_corners[((i)%4 + 5)%8, 0], y=abs_corners[((i)%4 + 5)%8, 1], z=abs_corners[((i)%4 + 5)%8, 2])
+        ]
+    points += [
+        Point(x=abs_corners[2, 0], y=abs_corners[2, 1], z=abs_corners[2, 2]),
+        Point(x=abs_corners[7, 0], y=abs_corners[7, 1], z=abs_corners[7, 2]),
+        Point(x=abs_corners[3, 0], y=abs_corners[3, 1], z=abs_corners[3, 2]),
+        Point(x=abs_corners[6, 0], y=abs_corners[6, 1], z=abs_corners[6, 2]),
+
+        Point(x=abs_corners[4, 0], y=abs_corners[4, 1], z=abs_corners[4, 2]),
+        Point(x=abs_corners[5, 0], y=abs_corners[5, 1], z=abs_corners[5, 2]),
+        Point(x=abs_corners[0, 0], y=abs_corners[0, 1], z=abs_corners[0, 2]),
+        Point(x=abs_corners[1, 0], y=abs_corners[1, 1], z=abs_corners[1, 2])
+    ]
+
+    return points
+
+def object_to_marker(obj, frame_id="base", marker_id=None, duration=0.15, color=None):
     """ Transform an object to a marker.
 
     Args:
@@ -59,26 +109,19 @@ def object_to_marker(obj, frame_id="base", marker_id=None, duration=0.15):
     marker.header.frame_id = frame_id
     if marker_id is not None:
         marker.id = marker_id
-    marker.type = 1
-    marker.pose.position.x = obj["xyz"][0]
-    marker.pose.position.y = obj["xyz"][1]
-    marker.pose.position.z = obj["xyz"][2]
-    
-    q = tf.transformations.quaternion_from_euler(0, obj["theta"], 0)
-    marker.pose.orientation.x = q[0]
-    marker.pose.orientation.y = q[1]
-    marker.pose.orientation.z = q[2]
-    marker.pose.orientation.w = q[3]
-    marker.scale.x = obj["whl"][2]
-    marker.scale.y = obj["whl"][1]
-    marker.scale.z = obj["whl"][0]
+    marker.type = 5
+    marker.scale.x = 0.05
 
     object_cls_index = KITTI_NAMES.index(obj["type_name"])
-    obj_color = KITTI_COLORS[object_cls_index] #[r, g, b]
+    if color is None:
+        obj_color = KITTI_COLORS[object_cls_index] #[r, g, b]
+    else:
+        obj_color = color
     marker.color.r = obj_color[0] / 255.0
     marker.color.g = obj_color[1] / 255.0
     marker.color.b = obj_color[2] / 255.0
-    marker.color.a = obj["score"] * 0.5
+    marker.color.a = obj["score"]
+    marker.points = line_points_from_3d_bbox(obj["xyz"][0], obj["xyz"][1], obj["xyz"][2], obj["whl"][0], obj["whl"][1], obj["whl"][2], obj["theta"])
 
     marker.lifetime = rospy.Duration.from_sec(duration)
     return marker
@@ -202,3 +245,12 @@ def publish_point_cloud(pointcloud, pc_publisher, frame_id, field_names='xyza'):
     """
     msg = array2pc2(pointcloud, frame_id, field_names)
     pc_publisher.publish(msg)
+
+def clear_all_bbox(marker_publisher):
+    clear_marker = Marker()
+    clear_marker.action = 3
+    if marker_publisher.data_class is Marker:
+        marker_publisher.publish(clear_marker)
+        return
+    if marker_publisher.data_class is MarkerArray:
+        marker_publisher.publish([clear_marker])
