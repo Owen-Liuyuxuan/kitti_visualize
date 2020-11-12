@@ -3,12 +3,18 @@ import os
 import numpy as np
 import rospy
 from visualization_msgs.msg import Marker
+import scipy.io as sio
 from constants import KITTI_COLORS, KITTI_NAMES
 
 def color_pointcloud(pts, image, T, P2):
     hfiller = np.expand_dims(np.ones(pts.shape[0]), axis=1)
     pts_hT = np.hstack((pts, hfiller)).T #(4, #pts)
-    pts_cam_T = T.dot(pts_hT) # (4, #pts)
+    if T.shape == (3, 4):
+        T1 = np.eye(4)
+        T1[0: 3] = T.copy()
+    else:
+        T1 = T.copy()
+    pts_cam_T = T1.dot(pts_hT) # (4, #pts)
 
     pixels_T = P2.dot(pts_cam_T) #(3, #pts)
     pixels = pixels_T.T
@@ -171,7 +177,8 @@ def get_files(base_dir, index, is_sequence, depth_dir=None):
         "right_image":"",
         "point_cloud":"",
         "label":None,
-        "additional_label":None
+        "additional_label":None,
+        "odom_array":None,
     }
     if is_sequence:
         
@@ -199,6 +206,14 @@ def get_files(base_dir, index, is_sequence, depth_dir=None):
         velodynes.sort()
         velodynes = [os.path.join(velo_dir, velodyne) for velodyne in velodynes]
 
+
+        odometry_mat = os.path.join(date_dir, sequence, 'oxts', 'pose.mat') # pose mat can be generated with official matlab toolkits
+        if os.path.isfile(odometry_mat):
+            pose_dict = sio.loadmat(odometry_mat)
+            odom_array = pose_dict[[key for key in list(pose_dict.keys()) if not key.startswith('__')][0]] # the only non "__" key, should be a N, 4, 4 matrix
+        else:
+            odom_array = np.stack([np.eye(4) for _ in range(len(left_images))], dim=0)
+
         if not depth_dir is None:
             if sequence in os.listdir(os.path.join(depth_dir, "train")):
                 depth_image_dir = os.path.join(depth_dir, "train", sequence, 'proj_depth', 'groundtruth', 'image_02')
@@ -217,6 +232,7 @@ def get_files(base_dir, index, is_sequence, depth_dir=None):
         output_dict["left_image"] = left_images
         output_dict["right_image"] = right_images
         output_dict["point_cloud"] = velodynes
+        output_dict["odom_array"] = odom_array
 
     else:
         kitti_ind = "%06d" % index
@@ -226,6 +242,7 @@ def get_files(base_dir, index, is_sequence, depth_dir=None):
         calib_file = os.path.join(base_dir, "calib", kitti_ind + ".txt")
         label_file = os.path.join(base_dir, "label_2", kitti_ind + ".txt")
         additional_label_file = os.path.join(base_dir, "additional_label_2", kitti_ind + ".txt")
+        depth_file = os.path.join(base_dir, "depth", kitti_ind + ".png")
         P2, P3, T_velo2cam = read_calib_from_detection(calib_file)
 
         output_dict["left_image"] = left_image
@@ -237,6 +254,9 @@ def get_files(base_dir, index, is_sequence, depth_dir=None):
 
         if os.path.isfile(label_file):
             output_dict["label"] = label_file
+
+        if os.path.isfile(depth_file):
+            output_dict["depth_image"] = depth_file
         
         if os.path.isfile(additional_label_file):
             output_dict["additional_label"] = additional_label_file

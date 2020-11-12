@@ -140,7 +140,7 @@ def publish_tf(P2=None, P3=None, T=None):
             tf.transformations.quaternion_from_matrix(homo_R),
             rospy.Time.now(),
             "velodyne",
-            "base"
+            "camera_base"
         )
 
     ## broadcast the translation from world to base
@@ -150,8 +150,8 @@ def publish_tf(P2=None, P3=None, T=None):
         # tf.transformations.quaternion_from_matrix(homo_R.T),
         [0.5, -0.5, 0.5, -0.5],
         rospy.Time.now(),
-        "base",
-        "world"
+        "camera_base",
+        "base_link"
     )
     if P2 is not None:
     ## broadcast the translation in P2
@@ -160,7 +160,7 @@ def publish_tf(P2=None, P3=None, T=None):
             tf.transformations.quaternion_from_euler(0, 0, 0),
             rospy.Time.now(),
             "left_camera",
-            "base"
+            "camera_base"
         )
     if P3 is not None:
         ## broadcast translation in P3
@@ -169,8 +169,19 @@ def publish_tf(P2=None, P3=None, T=None):
             tf.transformations.quaternion_from_euler(0, 0, 0),
             rospy.Time.now(),
             "right_camera",
-            "base"
+            "camera_base"
         )
+
+def publish_odom(R, T):
+    br = tf.TransformBroadcaster()
+    
+    br.sendTransform(
+        (T[0], T[1], T[2]),
+        tf.transformations.quaternion_from_matrix(R),
+        rospy.Time.now(),
+        "base_link",
+        "odom"
+    )
 
 def publish_image(image, image_publisher, camera_info_publisher, P, frame_id):
     """Publish image and info message to ROS.

@@ -6,12 +6,14 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /TF1/Frames1
+        - /Camera1
         - /Camera1/Visibility1
         - /Camera2/Visibility1
-        - /PointCloud21
         - /PointCloud21/Autocompute Value Bounds1
+        - /PointCloud25
       Splitter Ratio: 0.5
-    Tree Height: 349
+    Tree Height: 272
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -30,7 +32,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud2
   - Class: rviz/Help
     Name: Help
 Preferences:
@@ -59,21 +61,41 @@ Visualization Manager:
       Reference Frame: <Fixed Frame>
       Value: false
     - Class: rviz/TF
-      Enabled: false
+      Enabled: true
       Frame Timeout: 15
       Frames:
-        All Enabled: true
+        All Enabled: false
+        base_link:
+          Value: true
+        camera_base:
+          Value: true
+        left_camera:
+          Value: true
+        odom:
+          Value: true
+        right_camera:
+          Value: true
+        velodyne:
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        odom:
+          base_link:
+            camera_base:
+              left_camera:
+                {}
+              right_camera:
+                {}
+              velodyne:
+                {}
       Update Interval: 0
-      Value: false
+      Value: true
     - Class: rviz/Camera
-      Enabled: true
+      Enabled: false
       Image Rendering: background and overlay
       Image Topic: /kitti/right_camera/image
       Name: Camera
@@ -81,7 +103,7 @@ Visualization Manager:
       Queue Size: 2
       Transport Hint: raw
       Unreliable: false
-      Value: true
+      Value: false
       Visibility:
         Camera: true
         Grid: false
@@ -119,14 +141,14 @@ Visualization Manager:
     - Alpha: 0.800000011920929
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 58.132999420166016
-        Min Value: -28.55900001525879
+        Max Value: 78.94200134277344
+        Min Value: 0.7940000295639038
         Value: true
-      Axis: Y
+      Axis: X
       Channel Name: intensity
       Class: rviz/PointCloud2
       Color: 0; 0; 0
-      Color Transformer: FlatColor
+      Color Transformer: AxisColor
       Decay Time: 0
       Enabled: true
       Invert Rainbow: false
@@ -149,14 +171,14 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 69.88754272460938
-        Min Value: 3.0296077728271484
+        Max Value: 66.4375
+        Min Value: 4.45703125
         Value: true
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
       Color: 186; 189; 182
-      Color Transformer: RGBF32
+      Color Transformer: AxisColor
       Decay Time: 0
       Enabled: false
       Invert Rainbow: false
@@ -169,7 +191,7 @@ Visualization Manager:
       Queue Size: 1
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.00800000037997961
+      Size (m): 0.07999999821186066
       Style: Flat Squares
       Topic: /kitti/depth_image
       Unreliable: false
@@ -188,7 +210,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGBF32
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -205,12 +227,72 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: ""
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: PointCloud2
+      Position Transformer: ""
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.009999999776482582
+      Style: Flat Squares
+      Topic: /kitti/reduced_lidar
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: false
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: RGBF32
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.10000000149011612
+      Style: Flat Squares
+      Topic: /kitti/pred_depth
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
     Default Light: true
-    Fixed Frame: world
+    Fixed Frame: base_link
     Frame Rate: 30
   Name: root
   Tools:
@@ -234,37 +316,37 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 25.194602966308594
+      Distance: 27.042373657226562
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 19.863256454467773
-        Y: -0.6212956309318542
-        Z: -4.390663146972656
+        X: 17.73141098022461
+        Y: 3.2371957302093506
+        Z: -6.8934454917907715
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.34979942440986633
+      Pitch: 0.32979875802993774
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.4606852531433105
+      Yaw: 3.3306891918182373
     Saved: ~
 Window Geometry:
   Camera:
     collapsed: false
   Displays:
     collapsed: false
-  Height: 1052
+  Height: 1025
   Help:
     collapsed: false
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000005310000037efc020000000dfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb0000000c00430061006d006500720061010000003d000001bb0000001600fffffffc000001fe000001bd000000e60100001cfa000000000100000004fb0000000c00430061006d0065007200610100000000ffffffff0000006900fffffffb0000000a0049006d0061006700650000000000ffffffff0000000000000000fb0000000a0049006d0061006700650000000000ffffffff0000000000000000fb000000100044006900730070006c0061007900730100000000000002b90000015600fffffffb0000000a0049006d006100670065010000020d000001930000000000000000fb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d00610067006500000002d9000000c70000000000000000fb0000000a0049006d00610067006501000002d9000000c70000000000000000fb0000000800480065006c007000000002ea000000b60000006e00ffffff00000001000002c60000037efc0200000002fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000780000000a9fc0100000002fb0000000a005600690065007700730000000000000005990000010000fffffffb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000a000000003efc0100000002fb0000000800540069006d0065010000000000000a00000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000004c90000037e00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000003bb00000363fc020000000dfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb0000000c00430061006d006500720061010000003d000001ad0000001600fffffffc000001f0000001b0000000e60100001cfa000000030100000004fb0000000c00430061006d0065007200610100000000ffffffff0000006900fffffffb0000000a0049006d0061006700650000000000ffffffff0000000000000000fb0000000a0049006d0061006700650000000000ffffffff0000000000000000fb000000100044006900730070006c0061007900730100000000000002b90000015600fffffffb0000000a0049006d006100670065010000020d000001930000000000000000fb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d00610067006500000002d9000000c70000000000000000fb0000000a0049006d00610067006501000002d9000000c70000000000000000fb0000000800480065006c007000000002ea000000b60000006e00ffffff00000001000002c60000037efc0200000002fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000780000000a9fc0100000002fb0000000a005600690065007700730000000000000005990000010000fffffffb0000000a00560069006500770073030000004e00000080000002e100000197000000030000073d0000003efc0100000002fb0000000800540069006d006501000000000000073d000002eb00fffffffb0000000800540069006d006501000000000000045000000000000000000000037c0000036300000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -273,6 +355,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: false
-  Width: 2560
-  X: 1920
-  Y: 0
+  Width: 1853
+  X: 67
+  Y: 27

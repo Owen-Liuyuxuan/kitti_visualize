@@ -4,7 +4,26 @@ Ros package to visualize KITTI object data, raw data, and depth prediction data 
 
 ## Getting Started:
 
-Overwrite the folder names in the launch file.
+Overwrite the folder names in the launch file to your data.
+
+### Core Features:
+
+- [x] KITTI object detection dataset support. 
+- [x] KITTI raw data sequence support. 
+- [x] KITTI depth prediction support. 
+- [x] Stereo RGB cameras.
+- [x] Filtered LiDAR, RGB point clouds.
+- [x] Ground truth bounding boxes.
+- [x] TF-tree (camera and LiDAR).
+- [x] GUI control & ROS topic control.
+- [ ] IMU tf trees.
+
+### Beta Features:
+
+Features that are supported with some tricks.
+
+- [x] Additional labels allowed to visualize detection results along with GT bboxes.
+- [x] Odometry supported in sequence reading and will publish to the TF tree.
 
 ## GUI
 

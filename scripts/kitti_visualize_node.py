@@ -61,6 +61,7 @@ class KittiVisualizeNode:
 
     def index_callback(self, msg):
         self.index = msg.data
+        self.sequence_index = 0
         self.publish_callback(None)
         
     def publish_callback(self, event):
@@ -103,13 +104,27 @@ class KittiVisualizeNode:
             ros_util.publish_image(right_image, self.right_image_publish, self.right_camera_info, P3, "right_camera")
 
             point_cloud = np.fromfile(meta_dict["point_cloud"], dtype=np.float32).reshape(-1, 4)
-            point_cloud = point_cloud[point_cloud[:, 0] > np.abs(point_cloud[:, 1]) * 0.2 ]
-            ros_util.publish_point_cloud(point_cloud, self.lidar_publisher, "velodyne")
+            point_cloud = point_cloud[point_cloud[:, 0] > np.abs(point_cloud[:, 1]) * 0.2]
+            pitch = np.arctan2(point_cloud[:, 2], point_cloud[:, 0])
+            point_cloud = point_cloud[ (point_cloud[:, 2] > -2.5) * (point_cloud[:, 2] < 1.5)]
+            rgb_point_cloud = kitti_utils.color_pointcloud(point_cloud[:, :3], left_image, T, P2)
+            #ros_util.publish_point_cloud(point_cloud, self.lidar_publisher, "velodyne")
+            ros_util.publish_point_cloud(rgb_point_cloud, self.lidar_publisher, "velodyne", "xyzbgr")
 
             depth_image = np.zeros([left_image.shape[0], left_image.shape[1]])
             depth_image[:, :] = self.image_pc_depth * 256
             depth_point_cloud = ros_util.depth_image_to_point_cloud_array(depth_image, P2[0:3, 0:3], rgb_image=left_image)
             ros_util.publish_point_cloud(depth_point_cloud, self.image_pc_publisher, "left_camera", 'xyzbgr')
+
+            if "depth_image" in meta_dict and meta_dict["depth_image"] is not None:
+                depth_image = cv2.imread(meta_dict["depth_image"], -1)#[H, W] uint16 /256.0=depth
+                H,W,_ = left_image.shape
+                print(H, W, depth_image.shape)
+                depth_image = cv2.resize(depth_image, (W, H-100), interpolation=cv2.INTER_NEAREST)[50:]
+                P2_depth = P2[0:3, 0:3].copy() #[3, 3]
+                P2_depth[1, 2] -= 150
+                depth_point_cloud = ros_util.depth_image_to_point_cloud_array(depth_image, P2_depth)
+                ros_util.publish_point_cloud(depth_point_cloud, self.depth_publisher, "left_camera", 'xyz')
 
             
         else:
@@ -144,6 +159,11 @@ class KittiVisualizeNode:
                         depth_image = cv2.imread(depth_image_path, -1)#[H, W] uint16 /256.0=depth
                         depth_point_cloud = ros_util.depth_image_to_point_cloud_array(depth_image, P2[0:3, 0:3], rgb_image=left_image)
                         ros_util.publish_point_cloud(depth_point_cloud, self.depth_publisher, "left_camera", 'xyzbgr')
+            
+            if "odom_array" in meta_dict and meta_dict["odom_array"] is not None:
+                R = meta_dict["odom_array"][self.sequence_index]
+                T = meta_dict["odom_array"][self.sequence_index, 0:3, 3]
+                ros_util.publish_odom(R, T)
 
             self.sequence_index += 1
 
