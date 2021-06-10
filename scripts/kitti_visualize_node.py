@@ -26,6 +26,7 @@ class KittiVisualizeNode:
         KITTI_raw_dir = rospy.get_param("~KITTI_RAW_DIR", None)
         self.KITTI_depth_dir = rospy.get_param("~KITTI_DEPTH_DIR", None)
         self.image_pc_depth  = float(rospy.get_param("~Image_PointCloud_Depth", 5))
+        self.update_frequency= float(rospy.get_param("~UPDATE_FREQUENCY", 8))
         if self.KITTI_depth_dir:
             self.depth_publisher = rospy.Publisher("/kitti/depth_image", PointCloud2, queue_size=1, latch=True)
         self.kitti_base_dir = [KITTI_obj_dir, KITTI_raw_dir]
@@ -35,7 +36,6 @@ class KittiVisualizeNode:
         self.sequence_index = 0
         self.pause = False
         self.stop = True
-        self.update_frequency = 8
         self.timer = rospy.Timer(rospy.Duration(1.0 / self.update_frequency), self.publish_callback)
         rospy.Subscriber("/kitti/control/is_sequence", Bool, self.is_sequence_callback)
         rospy.Subscriber("/kitti/control/index", Int32, self.index_callback)
