@@ -4,7 +4,7 @@ import numpy as np
 import rospy
 from visualization_msgs.msg import Marker
 import scipy.io as sio
-from constants import KITTI_COLORS, KITTI_NAMES
+from .constants import KITTI_COLORS, KITTI_NAMES
 
 def color_pointcloud(pts, image, T, P2):
     hfiller = np.expand_dims(np.ones(pts.shape[0]), axis=1)
@@ -212,7 +212,7 @@ def get_files(base_dir, index, is_sequence, depth_dir=None):
             pose_dict = sio.loadmat(odometry_mat)
             odom_array = pose_dict[[key for key in list(pose_dict.keys()) if not key.startswith('__')][0]] # the only non "__" key, should be a N, 4, 4 matrix
         else:
-            odom_array = np.stack([np.eye(4) for _ in range(len(left_images))], dim=0)
+            odom_array = np.stack([np.eye(4) for _ in range(len(left_images))], dim=0) # just not outputing odom is also fine.
 
         if not depth_dir is None:
             if sequence in os.listdir(os.path.join(depth_dir, "train")):
