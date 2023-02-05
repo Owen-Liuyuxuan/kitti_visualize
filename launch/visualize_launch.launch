@@ -2,7 +2,7 @@
 <launch>
     <arg name="KITTI_OBJ_DIR" default="/data/kitti_obj/training"/>
     <arg name="KITTI_RAW_DIR" default="/data/kitti_raw"/>
-    <!--  do not provide KITTI_DEPTH_DIR to the node to disable -->
+    <!--  do not provide KITTI_DEPTH_DIR to the node to disable depth prediction-->
     <arg name="KITTI_DEPTH_DIR" default="/data/data_depth_annotated"/> 
     <node pkg="kitti_visualize" type="kitti_visualize_node.py" name="kitti_visualize_node" output="screen">
         <param name="KITTI_OBJ_DIR" value="$(arg KITTI_OBJ_DIR)"/>
