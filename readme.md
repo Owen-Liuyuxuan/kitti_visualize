@@ -23,6 +23,7 @@ Clone the repo under the {workspace}/src/ folder. Overwrite the folder names in 
 cd catkin_ws/src
 git clone https://github.com/Owen-Liuyuxuan/kitti_visualize
 cd ..
+catkin_make
 source devel/setup.bash # devel/setup.zsh or devel/setup.sh for your own need.
 
 # modify and check the data path!! Also control the publishing frequency of the data stream.
