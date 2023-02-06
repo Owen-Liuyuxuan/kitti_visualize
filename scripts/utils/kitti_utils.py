@@ -118,6 +118,26 @@ def read_T_from_sequence(file):
     T_velo2cam[0:3, 3:4] = T
     return T_velo2cam
 
+def read_Timu_from_sequence(file):
+    R = None
+    T = None
+    with open(file, 'r') as f:
+        for line in f.readlines():
+            if line.startswith("R:"):
+                data = line.split(" ")
+                R = np.array([float(x) for x in data[1:10]])
+                R = np.reshape(R, [3, 3])
+            if line.startswith("T:"):
+                data = line.split(" ")
+                T = np.array([float(x) for x in data[1:4]])
+                T = np.reshape(T, [3, 1]) 
+    assert R is not None, "can not find R in file {}".format(file)
+    assert T is not None, "can not find T in file {}".format(file)
+    T_imu2velo = np.eye(4)
+    T_imu2velo[0:3, 0:3] = R
+    T_imu2velo[0:3, 3:4] = T
+    return T_imu2velo
+
 def read_P23_from_sequence(file):
     """ read P2 and P3 from a sequence file calib_cam_to_cam.txt
     """
@@ -172,6 +192,7 @@ def get_files(base_dir, index, is_sequence, depth_dir=None):
             "P2":None,
             "P3":None,
             "T_velo2cam":None,
+            "T_imu2velo":None,
         },
         "left_image":"",
         "right_image":"",
@@ -187,9 +208,12 @@ def get_files(base_dir, index, is_sequence, depth_dir=None):
         P2, P3 = read_P23_from_sequence(cam_calib_file)
         velo_calib_file = os.path.join(date_dir, "calib_velo_to_cam.txt")
         T_velo2cam = read_T_from_sequence(velo_calib_file)
+        imu_calib_file = os.path.join(date_dir, 'calib_imu_to_velo.txt')
+        T_imu2velo = read_Timu_from_sequence(imu_calib_file)
         output_dict["calib"]["P2"] = P2
         output_dict["calib"]["P3"] = P3
         output_dict["calib"]["T_velo2cam"] = T_velo2cam
+        output_dict["calib"]["T_imu2velo"] = T_imu2velo
 
         left_dir = os.path.join(date_dir, sequence, "image_02", "data")
         left_images = os.listdir(left_dir)

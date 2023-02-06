@@ -126,7 +126,7 @@ def object_to_marker(obj, frame_id="base", marker_id=None, duration=0.15, color=
     marker.lifetime = rospy.Duration.from_sec(duration)
     return marker
 
-def publish_tf(P2=None, P3=None, T=None):
+def publish_tf(P2=None, P3=None, T=None, T_imu=None):
     """ Publish camera, velodyne transform from P2, P3, T
     """
     br = tf.TransformBroadcaster()
@@ -144,15 +144,26 @@ def publish_tf(P2=None, P3=None, T=None):
         )
 
     ## broadcast the translation from world to base
-
-    br.sendTransform(
-        (0, 0, 0),
-        # tf.transformations.quaternion_from_matrix(homo_R.T),
-        [0.5, -0.5, 0.5, -0.5],
-        rospy.Time.now(),
-        "camera_base",
-        "base_link"
-    )
+    if T_imu is None:
+        br.sendTransform(
+            (0, 0, 0),
+            # tf.transformations.quaternion_from_matrix(homo_R.T),
+            [0.5, -0.5, 0.5, -0.5],
+            rospy.Time.now(),
+            "camera_base",
+            "base_link"
+        )
+    else:
+        T_cam2imu = np.linalg.inv(T_imu @ T)
+        homo_R = np.eye(4)
+        homo_R[0:3, 0:3] = T_cam2imu[0:3, 0:3]
+        br.sendTransform(
+            (T_cam2imu[0, 3], T_cam2imu[1, 3], T_cam2imu[2, 3]),
+            tf.transformations.quaternion_from_matrix(homo_R),
+            rospy.Time.now(),
+            "camera_base",
+            "base_link"
+        )
     if P2 is not None:
     ## broadcast the translation in P2
         br.sendTransform(

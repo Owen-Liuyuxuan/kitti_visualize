@@ -81,7 +81,8 @@ class KittiVisualizeNode:
         P2 = meta_dict["calib"]["P2"]
         P3 = meta_dict["calib"]["P3"]
         T = meta_dict["calib"]["T_velo2cam"]
-        ros_util.publish_tf(P2, P3, T)
+        T_imu = meta_dict["calib"]["T_imu2velo"]
+        ros_util.publish_tf(P2, P3, T, T_imu)
 
         if not self.is_sequence:
 
