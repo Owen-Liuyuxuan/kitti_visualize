@@ -8,6 +8,8 @@ Ros package to visualize KITTI object data, raw data, and depth prediction data 
 
 You can use this repo with either or both KITTI [object dataset](https://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d) and [raw dataset](https://www.cvlibs.net/datasets/kitti/raw_data.php).  The code will not raise error until the data is actually being read, so if you are using only object dataset or only raw dataset, the code will still work fine (we have a GUI to control which dataset we are using). 
 
+If you need oxts poses/odometry support for raw dataset. Please refer to this [naive method](https://gist.github.com/Owen-Liuyuxuan/27f12e15788acba76053df84a28f2291) to produce poses for every sequence. Otherwise, we will simply publish a identity transform between baselink and odom.
+
 ### Software Prerequisite
 
 This repo runs with ROS python3 (noetic), and we expect PyQt5 correctly setup with ROS installation.
@@ -103,4 +105,6 @@ Features that are supported with some tricks.
 #### Additional labels
 To visualize results predicted by some existing object detection algorithms/repo like [visualDet3D](https://github.com/Owen-Liuyuxuan/visualDet3D), we first have their predictions on training split/test split stored in text files, as required by the KITTI submissions. Then we copy the predictions to kitti_obj/{split}/additional_label_2. Then the prediction results will be published with gt labels on the same topic.
 
+#### Odometry support:
 
+We can use the oxts measurement in the raw dataset to obtain a pose for each frame to enable a truly sequential visualization. In this repo, we first refer to this [naive method](https://gist.github.com/Owen-Liuyuxuan/27f12e15788acba76053df84a28f2291) to produce poses for every sequence. Then in this repo, we will publish a tf transform from odom to baselink based on the poses matrix. 
